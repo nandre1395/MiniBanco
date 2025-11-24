@@ -23,7 +23,7 @@ app.use(
   cors({
     origin: [
       "https://minibanco-68w4.onrender.com", // frontend en Render
-      "http://localhost:3000",               // para pruebas locales
+      "http://localhost:3000",               // pruebas locales
     ],
     credentials: true,
   })
@@ -117,7 +117,8 @@ app.get("/api/cuentas/:id", (req, res) => {
     "SELECT * FROM cuentas WHERE usuario_id = ?",
     [req.params.id],
     (err, result) => {
-      if (err) return res.status(500).json({ message: "Error al obtener cuentas" });
+      if (err)
+        return res.status(500).json({ message: "Error al obtener cuentas" });
       res.json(result || []);
     }
   );
@@ -136,35 +137,64 @@ app.post("/api/cuentas", (req, res) => {
 
     const montoNum = parseFloat(monto);
 
-    db.query("SELECT saldo FROM cuentas WHERE id = ?", [cuentaOrigen], (err, rows) => {
-      if (err) return res.status(500).json({ message: "Error" });
-      if (!rows || rows.length === 0)
-        return res.status(404).json({ message: "Cuenta origen no encontrada" });
+    db.query(
+      "SELECT saldo FROM cuentas WHERE id = ?",
+      [cuentaOrigen],
+      (err, rows) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        if (!rows || rows.length === 0)
+          return res
+            .status(404)
+            .json({ message: "Cuenta origen no encontrada" });
 
-      const saldo = parseFloat(rows[0].saldo);
-      if (saldo < montoNum)
-        return res.status(400).json({ message: "Saldo insuficiente" });
+        const saldo = parseFloat(rows[0].saldo);
+        if (saldo < montoNum)
+          return res.status(400).json({ message: "Saldo insuficiente" });
 
-      db.query(
-        "INSERT INTO cuentas (usuario_id, tipo, saldo) VALUES (?, ?, ?)",
-        [usuario_id, tipo, montoNum],
-        (err2, result2) => {
-          if (err2) return res.status(500).json({ message: "Error al crear CDT" });
-          const newCtaId = result2.insertId;
+        db.query(
+          "INSERT INTO cuentas (usuario_id, tipo, saldo) VALUES (?, ?, ?)",
+          [usuario_id, tipo, montoNum],
+          (err2, result2) => {
+            if (err2)
+              return res
+                .status(500)
+                .json({ message: "Error al crear CDT" });
 
-          db.query("UPDATE cuentas SET saldo = saldo - ? WHERE id = ?", [montoNum, cuentaOrigen]);
-          db.query("INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)", [cuentaOrigen, "Inversión CDT", -montoNum]);
-          db.query("INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)", [newCtaId, "CDT abierto", montoNum]);
+            const newCtaId = result2.insertId;
 
-          res.json({ message: "CDT creado correctamente", cuentaId: newCtaId });
-        }
-      );
-    });
+            db.query(
+              "UPDATE cuentas SET saldo = saldo - ? WHERE id = ?",
+              [montoNum, cuentaOrigen]
+            );
+            db.query(
+              "INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)",
+              [cuentaOrigen, "Inversión CDT", -montoNum]
+            );
+            db.query(
+              "INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)",
+              [newCtaId, "CDT abierto", montoNum]
+            );
+
+            res.json({
+              message: "CDT creado correctamente",
+              cuentaId: newCtaId,
+            });
+          }
+        );
+      }
+    );
   } else {
-    db.query("INSERT INTO cuentas (usuario_id, tipo, saldo) VALUES (?, ?, 0)", [usuario_id, tipo], (err) => {
-      if (err) return res.status(500).json({ message: "Error al crear cuenta" });
-      res.json({ message: "Cuenta creada" });
-    });
+    db.query(
+      "INSERT INTO cuentas (usuario_id, tipo, saldo) VALUES (?, ?, 0)",
+      [usuario_id, tipo],
+      (err) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ message: "Error al crear cuenta" });
+        res.json({ message: "Cuenta creada" });
+      }
+    );
   }
 });
 
@@ -173,27 +203,42 @@ app.delete("/api/cuentas/:id", (req, res) => {
   const cuentaId = req.params.id;
   const transferTo = req.query.transferTo;
 
-  db.query("SELECT saldo FROM cuentas WHERE id = ?", [cuentaId], (err, rows) => {
-    if (err) return res.status(500).json({ message: "Error al consultar cuenta" });
-    if (!rows || rows.length === 0)
-      return res.status(404).json({ message: "Cuenta no encontrada" });
+  db.query(
+    "SELECT saldo FROM cuentas WHERE id = ?",
+    [cuentaId],
+    (err, rows) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ message: "Error al consultar cuenta" });
+      if (!rows || rows.length === 0)
+        return res.status(404).json({ message: "Cuenta no encontrada" });
 
-    const saldo = parseFloat(rows[0].saldo);
+      const saldo = parseFloat(rows[0].saldo);
 
-    const eliminarCuenta = () => {
-      db.query("DELETE FROM movimientos WHERE cuenta_id = ?", [cuentaId]);
-      db.query("DELETE FROM cuentas WHERE id = ?", [cuentaId]);
-      res.json({ message: "Cuenta eliminada correctamente" });
-    };
+      const eliminarCuenta = () => {
+        db.query("DELETE FROM movimientos WHERE cuenta_id = ?", [cuentaId]);
+        db.query("DELETE FROM cuentas WHERE id = ?", [cuentaId]);
+        res.json({ message: "Cuenta eliminada correctamente" });
+      };
 
-    if (saldo > 0 && transferTo) {
-      db.query("UPDATE cuentas SET saldo = saldo + ? WHERE id = ?", [saldo, transferTo], eliminarCuenta);
-    } else if (saldo > 0 && !transferTo) {
-      res.status(400).json({ message: "La cuenta tiene saldo, especifique cuenta destino" });
-    } else {
-      eliminarCuenta();
+      if (saldo > 0 && transferTo) {
+        db.query(
+          "UPDATE cuentas SET saldo = saldo + ? WHERE id = ?",
+          [saldo, transferTo],
+          eliminarCuenta
+        );
+      } else if (saldo > 0 && !transferTo) {
+        res
+          .status(400)
+          .json({
+            message: "La cuenta tiene saldo, especifique cuenta destino",
+          });
+      } else {
+        eliminarCuenta();
+      }
     }
-  });
+  );
 });
 
 // Movimientos
@@ -205,18 +250,35 @@ app.post("/api/movimientos", (req, res) => {
   const valNum = parseFloat(valor);
 
   if (tipo === "Retiro") {
-    db.query("SELECT saldo FROM cuentas WHERE id = ?", [cuenta_id], (err, rows) => {
-      if (err) return res.status(500).json({ message: "Error" });
-      const saldo = rows[0].saldo;
-      if (saldo < valNum) return res.status(400).json({ message: "Saldo insuficiente" });
+    db.query(
+      "SELECT saldo FROM cuentas WHERE id = ?",
+      [cuenta_id],
+      (err, rows) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        const saldo = rows[0].saldo;
+        if (saldo < valNum)
+          return res.status(400).json({ message: "Saldo insuficiente" });
 
-      db.query("INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)", [cuenta_id, tipo, -valNum]);
-      db.query("UPDATE cuentas SET saldo = saldo - ? WHERE id = ?", [valNum, cuenta_id]);
-      res.json({ message: "Retiro realizado" });
-    });
+        db.query(
+          "INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)",
+          [cuenta_id, tipo, -valNum]
+        );
+        db.query(
+          "UPDATE cuentas SET saldo = saldo - ? WHERE id = ?",
+          [valNum, cuenta_id]
+        );
+        res.json({ message: "Retiro realizado" });
+      }
+    );
   } else {
-    db.query("INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)", [cuenta_id, tipo, valNum]);
-    db.query("UPDATE cuentas SET saldo = saldo + ? WHERE id = ?", [valNum, cuenta_id]);
+    db.query(
+      "INSERT INTO movimientos (cuenta_id, tipo, valor) VALUES (?, ?, ?)",
+      [cuenta_id, tipo, valNum]
+    );
+    db.query(
+      "UPDATE cuentas SET saldo = saldo + ? WHERE id = ?",
+      [valNum, cuenta_id]
+    );
     res.json({ message: "Movimiento registrado" });
   }
 });
@@ -240,7 +302,10 @@ app.get("/api/saldo/:cuentaId", (req, res) => {
     [req.params.cuentaId],
     (err, rows) => {
       if (err) return res.status(500).json({ message: "Error" });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Cuenta no encontrada" });
+      if (!rows || rows.length === 0)
+        return res
+          .status(404)
+          .json({ message: "Cuenta no encontrada" });
       res.json(rows[0]);
     }
   );
@@ -272,7 +337,20 @@ app.post("/api/simulador-inversion", (req, res) => {
   });
 });
 
+
+// -------------------------------
+// SERVIR FRONTEND (ARREGLA EL 404 EN RENDER)
+// -------------------------------
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
+});
+
+
+// -------------------------------
 // Servidor
+// -------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
