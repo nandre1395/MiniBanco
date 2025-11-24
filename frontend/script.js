@@ -3,7 +3,7 @@
 // Si NO es local, usa el backend en Render.
 const API_BASE_URL = 
   location.hostname === "localhost" || location.hostname === "127.0.0.1"
-    ? "http://localhost:3000"
+    ? "http://localhost:3001"  // Cambia 3000 por 3001
     : "https://minibanco-backend.onrender.com";
 
 // =================== TOAST ===================

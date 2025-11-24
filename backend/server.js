@@ -2,35 +2,40 @@ import express from "express";
 import mysql from "mysql2";
 import bcrypt from "bcrypt";
 import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 
 // -------------------------------
-// Middlewares
+// Middlewares - CORREGIDO
 // -------------------------------
 app.use(express.json());
 
-// CORS: prioridad al dominio de Render
-app.use(
-  cors({
-    origin: [
-      "https://minibanco-68w4.onrender.com", // frontend en Render
-      "http://localhost:3000",               // pruebas locales
-    ],
-    credentials: true,
-  })
-);
+// CORS MÁS PERMISIVO - CORREGIDO
+app.use(cors({
+  origin: [
+    "https://minibanco-68w4.onrender.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:5500" // Para Live Server
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// Manejar preflight OPTIONS requests - NUEVO
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.status(200).send();
+});
 
 // -------------------------------
-// Conexión a MySQL (Railway)
+// Conexión a MySQL (Railway) - MANTIENE IGUAL
 // -------------------------------
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -46,10 +51,19 @@ db.connect((err) => {
 });
 
 // -------------------------------
-// Rutas API
+// Rutas API - MANTIENE IGUAL PERO AÑADE HEALTH CHECK
 // -------------------------------
 
-// Registro
+// Health check - NUEVO
+app.get("/health", (req, res) => {
+  res.status(200).json({ 
+    status: "OK", 
+    message: "Backend funcionando correctamente",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Registro - MANTIENE IGUAL
 app.post("/api/register", async (req, res) => {
   const { id, nombre, password } = req.body;
   if (!id || !nombre || !password)
@@ -76,7 +90,7 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// Login
+// Login - MANTIENE IGUAL
 app.post("/api/login", (req, res) => {
   const { id, password } = req.body;
   if (!id || !password)
@@ -351,7 +365,8 @@ app.get("/", (req, res) => {
 // -------------------------------
 // Servidor
 // -------------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+const PORT = process.env.PORT || 3001; // Cambia a 3001 para evitar conflictos
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Servidor BACKEND corriendo en puerto ${PORT}`);
+  console.log(`📍 Health check: http://localhost:${PORT}/health`);
 });
