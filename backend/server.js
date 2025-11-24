@@ -264,7 +264,7 @@ app.post("/api/simulador-inversion", (req, res) => {
 
 // ⚠️ CUALQUIER RUTA QUE NO EXISTA → index.html
 // Esta sintaxis funciona con Express 4.x+ y Node 22
-app.get("/*", (req, res) => {
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
