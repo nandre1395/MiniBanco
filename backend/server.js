@@ -9,11 +9,11 @@ dotenv.config();
 const app = express();
 
 // -------------------------------
-// Middlewares - CORREGIDO
+// Middlewares - SIMPLIFICADO
 // -------------------------------
 app.use(express.json());
 
-// CORS MÁS PERMISIVO - CORREGIDO
+// CORS SIMPLIFICADO - usa solo el middleware cors
 app.use(cors({
   origin: [
     "https://minibanco-68w4.onrender.com",
@@ -22,17 +22,8 @@ app.use(cors({
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
-
-// Manejar preflight OPTIONS requests - CORREGIDO
-app.options("/*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.status(200).send();
-});
 
 // -------------------------------
 // Conexión a MySQL (Railway)
@@ -48,7 +39,6 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) {
     console.error("❌ Error conectando a MySQL:", err.message);
-    console.error("Detalles:", err);
   } else {
     console.log("✅ MySQL conectado correctamente");
   }
@@ -66,7 +56,7 @@ app.get("/health", (req, res) => {
 });
 
 // -------------------------------
-// Rutas API (MANTÉN TODAS TUS RUTAS ORIGINALES)
+// Rutas API (TODAS TUS RUTAS ORIGINALES)
 // -------------------------------
 
 // Registro
@@ -361,7 +351,7 @@ app.post("/api/simulador-inversion", (req, res) => {
 // Servidor
 // -------------------------------
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`🚀 Servidor BACKEND corriendo en puerto ${PORT}`);
-  console.log(`📍 Health check disponible en: /health`);
+  console.log(`📍 Health check: http://localhost:${PORT}/health`);
 });
