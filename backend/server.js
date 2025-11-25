@@ -3,18 +3,26 @@ import mysql from "mysql2";
 import bcrypt from "bcrypt";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 const app = express();
 
-// -----------------------------------------
-// Middleware principal
-// -----------------------------------------
+// -------------------------------------------------------------------
+// Resolver __dirname en ES Modules
+// -------------------------------------------------------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// -------------------------------------------------------------------
+// Middleware
+// -------------------------------------------------------------------
 app.use(express.json());
 
-// -----------------------------------------
-// CORS COMPLETO + Preflight
-// -----------------------------------------
+// -------------------------------------------------------------------
+// CORS
+// -------------------------------------------------------------------
 const allowedOrigins = [
   "https://minibanco-68w4.onrender.com",
   "http://localhost:3000",
@@ -30,17 +38,14 @@ app.use(
   })
 );
 
-
-// -----------------------------------------
-// Conexión MySQL (LOCAL + RENDER + RAILWAY)
-// -----------------------------------------
+// -------------------------------------------------------------------
+// MySQL
+// -------------------------------------------------------------------
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-
-  // 🔥 CORRECCIÓN IMPORTANTE AQUÍ:
   port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
 });
 
@@ -53,16 +58,22 @@ db.connect((err) => {
   }
 });
 
-// evitar desconexión en Railway
+// Keep alive
 setInterval(() => {
   db.ping((err) => {
     if (err) console.log("⚠️ Error en keep-alive MySQL:", err);
   });
 }, 240000);
 
-// -----------------------------------------
+// -------------------------------------------------------------------
+// SERVIR FRONTEND (🔥 LO QUE FALTABA 🔥)
+// -------------------------------------------------------------------
+const frontendPath = path.join(__dirname, "../frontend");
+app.use(express.static(frontendPath));
+
+// -------------------------------------------------------------------
 // Health Check
-// -----------------------------------------
+// -------------------------------------------------------------------
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -71,17 +82,17 @@ app.get("/health", (req, res) => {
   });
 });
 
-// -----------------------------------------
-// Función de limpieza
-// -----------------------------------------
+// -------------------------------------------------------------------
+// Función utilidad
+// -------------------------------------------------------------------
 function limpiarTexto(texto) {
   if (typeof texto !== "string") return texto;
   return texto.trim();
 }
 
-// -----------------------------------------
+// -------------------------------------------------------------------
 // RUTAS API COMPLETAS
-// -----------------------------------------
+// -------------------------------------------------------------------
 
 // Registro
 app.post("/api/register", async (req, res) => {
@@ -138,7 +149,7 @@ app.post("/api/login", (req, res) => {
   });
 });
 
-// Información de usuario
+// Información usuario
 app.get("/api/user/:id", (req, res) => {
   db.query(
     "SELECT id, nombre FROM usuarios WHERE id = ?",
@@ -270,11 +281,9 @@ app.delete("/api/cuentas/:id", (req, res) => {
           eliminarCuenta
         );
       } else if (saldo > 0 && !transferTo) {
-        res
-          .status(400)
-          .json({
-            message: "La cuenta tiene saldo, especifique cuenta destino",
-          });
+        res.status(400).json({
+          message: "La cuenta tiene saldo, especifique cuenta destino",
+        });
       } else {
         eliminarCuenta();
       }
@@ -352,7 +361,7 @@ app.get("/api/saldo/:cuentaId", (req, res) => {
   );
 });
 
-// Simulador de inversión
+// Simulador inversión
 app.post("/api/simulador-inversion", (req, res) => {
   const { monto, tasaAnual, años, periodos } = req.body;
   const r = tasaAnual / 100;
@@ -378,6 +387,9 @@ app.post("/api/simulador-inversion", (req, res) => {
   });
 });
 
+// -------------------------------------------------------------------
+// Catch-all para rutas no encontradas
+// -------------------------------------------------------------------
 app.use((req, res) => {
   res.status(404).json({
     message: "Ruta no encontrada",
@@ -385,9 +397,9 @@ app.use((req, res) => {
   });
 });
 
-// -----------------------------------------
+// -------------------------------------------------------------------
 // Errores globales
-// -----------------------------------------
+// -------------------------------------------------------------------
 process.on("uncaughtException", (err) => {
   console.error("🔥 Excepción no controlada:", err);
 });
@@ -396,9 +408,9 @@ process.on("unhandledRejection", (reason) => {
   console.error("⚠️ Promesa no manejada:", reason);
 });
 
-// -----------------------------------------
+// -------------------------------------------------------------------
 // Servidor
-// -----------------------------------------
+// -------------------------------------------------------------------
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor BACKEND corriendo en puerto ${PORT}`);
