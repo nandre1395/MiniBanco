@@ -30,7 +30,7 @@ app.use(
   })
 );
 
-app.options("*", cors());
+app.options("/*", cors());
 
 // -----------------------------------------
 // Conexión MySQL (LOCAL + RENDER + RAILWAY)
