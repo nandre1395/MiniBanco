@@ -191,9 +191,7 @@ app.post("/api/cuentas", (req, res) => {
           [usuario_id, tipo, montoNum],
           (err2, result2) => {
             if (err2)
-              return res
-                .status(500)
-                .json({ message: "Error al crear CDT" });
+              return res.status(500).json({ message: "Error al crear CDT" });
 
             const newCtaId = result2.insertId;
 
@@ -224,9 +222,7 @@ app.post("/api/cuentas", (req, res) => {
       [usuario_id, tipo],
       (err) => {
         if (err)
-          return res
-            .status(500)
-            .json({ message: "Error al crear cuenta" });
+          return res.status(500).json({ message: "Error al crear cuenta" });
         res.json({ message: "Cuenta creada" });
       }
     );
@@ -243,9 +239,7 @@ app.delete("/api/cuentas/:id", (req, res) => {
     [cuentaId],
     (err, rows) => {
       if (err)
-        return res
-          .status(500)
-          .json({ message: "Error al consultar cuenta" });
+        return res.status(500).json({ message: "Error al consultar cuenta" });
       if (!rows || rows.length === 0)
         return res.status(404).json({ message: "Cuenta no encontrada" });
 
@@ -316,7 +310,7 @@ app.post("/api/movimientos", (req, res) => {
   }
 });
 
-// Historial de movimientos
+// Historial
 app.get("/api/movimientos/:cuentaId", (req, res) => {
   db.query(
     "SELECT * FROM movimientos WHERE cuenta_id = ? ORDER BY fecha DESC",
@@ -328,7 +322,7 @@ app.get("/api/movimientos/:cuentaId", (req, res) => {
   );
 });
 
-// Saldo de cuenta
+// Saldo
 app.get("/api/saldo/:cuentaId", (req, res) => {
   db.query(
     "SELECT tipo, saldo FROM cuentas WHERE id = ?",
@@ -336,15 +330,13 @@ app.get("/api/saldo/:cuentaId", (req, res) => {
     (err, rows) => {
       if (err) return res.status(500).json({ message: "Error" });
       if (!rows || rows.length === 0)
-        return res
-          .status(404)
-          .json({ message: "Cuenta no encontrada" });
+        return res.status(404).json({ message: "Cuenta no encontrada" });
       res.json(rows[0]);
     }
   );
 });
 
-// Simulador inversión
+// Simulador
 app.post("/api/simulador-inversion", (req, res) => {
   const { monto, tasaAnual, años, periodos } = req.body;
   const r = tasaAnual / 100;
@@ -371,12 +363,13 @@ app.post("/api/simulador-inversion", (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// SERVIR FRONTEND (🔥 CORRECTO: AL FINAL 🔥)
+// SERVIR FRONTEND – EXPRESS 5 COMPATIBLE
 // -------------------------------------------------------------------
 const frontendPath = path.join(__dirname, "../frontend");
 app.use(express.static(frontendPath));
 
-app.get("*", (req, res) => {
+// Middleware FINAL SIN "*" (Express 5 lo permite)
+app.use((req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 
