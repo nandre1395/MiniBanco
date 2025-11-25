@@ -9,22 +9,17 @@ import { fileURLToPath } from "url";
 dotenv.config();
 const app = express();
 
-// -------------------------------------------------------------------
-// Resolver __dirname en ES Modules
-// -------------------------------------------------------------------
+// Resolver paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// -------------------------------------------------------------------
 // Middleware
-// -------------------------------------------------------------------
 app.use(express.json());
 
-// -------------------------------------------------------------------
 // CORS
-// -------------------------------------------------------------------
 const allowedOrigins = [
   "https://minibanco-68w4.onrender.com",
+  "https://minibanco-backend.onrender.com",
   "http://localhost:3000",
   "http://127.0.0.1:5500",
 ];
@@ -38,9 +33,7 @@ app.use(
   })
 );
 
-// -------------------------------------------------------------------
-// MySQL
-// -------------------------------------------------------------------
+// MySQL Config
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -49,7 +42,7 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
 });
 
-// Conectar
+// Conectar MySQL
 db.connect((err) => {
   if (err) {
     console.error("❌ Error MySQL:", err.message);
@@ -58,22 +51,24 @@ db.connect((err) => {
   }
 });
 
-// Keep alive
+// Keep-alive para Railway
 setInterval(() => {
   db.ping((err) => {
-    if (err) console.log("⚠️ Error en keep-alive MySQL:", err);
+    if (err) console.log("⚠️ Error keep-alive:", err);
   });
 }, 240000);
 
-// -------------------------------------------------------------------
-// SERVIR FRONTEND (🔥 LO QUE FALTABA 🔥)
-// -------------------------------------------------------------------
-const frontendPath = path.join(__dirname, "../frontend");
-app.use(express.static(frontendPath));
+// Función útil
+function limpiarTexto(texto) {
+  if (typeof texto !== "string") return texto;
+  return texto.trim();
+}
 
 // -------------------------------------------------------------------
-// Health Check
+// RUTAS API
 // -------------------------------------------------------------------
+
+// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -81,18 +76,6 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-// -------------------------------------------------------------------
-// Función utilidad
-// -------------------------------------------------------------------
-function limpiarTexto(texto) {
-  if (typeof texto !== "string") return texto;
-  return texto.trim();
-}
-
-// -------------------------------------------------------------------
-// RUTAS API COMPLETAS
-// -------------------------------------------------------------------
 
 // Registro
 app.post("/api/register", async (req, res) => {
@@ -388,24 +371,13 @@ app.post("/api/simulador-inversion", (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Catch-all para rutas no encontradas
+// SERVIR FRONTEND (🔥 CORRECTO: AL FINAL 🔥)
 // -------------------------------------------------------------------
-app.use((req, res) => {
-  res.status(404).json({
-    message: "Ruta no encontrada",
-    ruta: req.originalUrl,
-  });
-});
+const frontendPath = path.join(__dirname, "../frontend");
+app.use(express.static(frontendPath));
 
-// -------------------------------------------------------------------
-// Errores globales
-// -------------------------------------------------------------------
-process.on("uncaughtException", (err) => {
-  console.error("🔥 Excepción no controlada:", err);
-});
-
-process.on("unhandledRejection", (reason) => {
-  console.error("⚠️ Promesa no manejada:", reason);
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 // -------------------------------------------------------------------
