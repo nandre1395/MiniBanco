@@ -5,63 +5,91 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 dotenv.config();
-
 const app = express();
 
-// -------------------------------
-// Middlewares - SIMPLIFICADO
-// -------------------------------
+// -----------------------------------------
+// Middleware principal
+// -----------------------------------------
 app.use(express.json());
 
-// CORS SIMPLIFICADO - usa solo el middleware cors
-app.use(cors({
-  origin: [
-    "https://minibanco-68w4.onrender.com",
-    "http://localhost:3000",
-    "http://127.0.0.1:5500"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+// -----------------------------------------
+// CORS COMPLETO + Preflight
+// -----------------------------------------
+const allowedOrigins = [
+  "https://minibanco-68w4.onrender.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:5500",
+];
 
-// -------------------------------
-// Conexión a MySQL (Railway)
-// -------------------------------
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.options("*", cors());
+
+// -----------------------------------------
+// Conexión MySQL (LOCAL + RENDER + RAILWAY)
+// -----------------------------------------
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+
+  // 🔥 CORRECCIÓN IMPORTANTE AQUÍ:
+  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
 });
 
+// Conectar
 db.connect((err) => {
   if (err) {
-    console.error("❌ Error conectando a MySQL:", err.message);
+    console.error("❌ Error MySQL:", err.message);
   } else {
     console.log("✅ MySQL conectado correctamente");
   }
 });
 
-// -------------------------------
-// Health check
-// -------------------------------
+// evitar desconexión en Railway
+setInterval(() => {
+  db.ping((err) => {
+    if (err) console.log("⚠️ Error en keep-alive MySQL:", err);
+  });
+}, 240000);
+
+// -----------------------------------------
+// Health Check
+// -----------------------------------------
 app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
+  res.status(200).json({
+    status: "OK",
     message: "Backend funcionando correctamente",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
-// -------------------------------
-// Rutas API (TODAS TUS RUTAS ORIGINALES)
-// -------------------------------
+// -----------------------------------------
+// Función de limpieza
+// -----------------------------------------
+function limpiarTexto(texto) {
+  if (typeof texto !== "string") return texto;
+  return texto.trim();
+}
+
+// -----------------------------------------
+// RUTAS API COMPLETAS
+// -----------------------------------------
 
 // Registro
 app.post("/api/register", async (req, res) => {
-  const { id, nombre, password } = req.body;
+  const id = limpiarTexto(req.body.id);
+  const nombre = limpiarTexto(req.body.nombre);
+  const password = limpiarTexto(req.body.password);
+
   if (!id || !nombre || !password)
     return res.status(400).json({ message: "Datos incompletos" });
 
@@ -72,7 +100,6 @@ app.post("/api/register", async (req, res) => {
       [id, nombre, hashedPass],
       (err) => {
         if (err) {
-          console.log(err);
           return res
             .status(500)
             .json({ message: "❌ El usuario ya existe o error" });
@@ -81,14 +108,15 @@ app.post("/api/register", async (req, res) => {
       }
     );
   } catch (e) {
-    console.log(e);
     res.status(500).json({ message: "Error servidor" });
   }
 });
 
 // Login
 app.post("/api/login", (req, res) => {
-  const { id, password } = req.body;
+  const id = limpiarTexto(req.body.id);
+  const password = req.body.password;
+
   if (!id || !password)
     return res.status(400).json({ message: "Datos incompletos" });
 
@@ -103,7 +131,11 @@ app.post("/api/login", (req, res) => {
     if (!match)
       return res.status(401).json({ message: "Contraseña incorrecta" });
 
-    res.json({ message: "Bienvenido", id: user.id, nombre: user.nombre });
+    res.json({
+      message: "Bienvenido",
+      id: user.id,
+      nombre: user.nombre,
+    });
   });
 });
 
@@ -347,9 +379,27 @@ app.post("/api/simulador-inversion", (req, res) => {
   });
 });
 
-// -------------------------------
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Ruta no encontrada",
+    ruta: req.originalUrl,
+  });
+});
+
+// -----------------------------------------
+// Errores globales
+// -----------------------------------------
+process.on("uncaughtException", (err) => {
+  console.error("🔥 Excepción no controlada:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️ Promesa no manejada:", reason);
+});
+
+// -----------------------------------------
 // Servidor
-// -------------------------------
+// -----------------------------------------
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor BACKEND corriendo en puerto ${PORT}`);
